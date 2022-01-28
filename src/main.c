@@ -1,7 +1,11 @@
 #include <stdio.h>
 #include "pico/stdlib.h"
 
+#include "composite.h"
+
 int main(void) {  
+    init_composite(); // Initialize composite video output
+
     stdio_init_all(); // Initialize stdio for printf, scanf, etc.
 
     gpio_init(PICO_DEFAULT_LED_PIN); // Initialize Led pin
@@ -16,6 +20,6 @@ int main(void) {
         sleep_ms(100);
 
 
-        printf("\n\nHello World\n"); // Hello world!
+        printf("Hello, World!\n"); // Hello, world!
     }
 }

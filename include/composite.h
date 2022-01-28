@@ -20,9 +20,9 @@ unsigned char vsync_ll[HDOTS+1];
 unsigned char vsync_ls[HDOTS+1];
 unsigned char vsync_ss[HDOTS+1];
 unsigned char border[HDOTS+1];
-unsigned char pixel_buffer[2][HDOTS+1];
+unsigned char pixel_line_buffer[2][HDOTS+1];
 
-void initComposite(void);
+void init_composite(void);
 
 void write_vsync_s(unsigned char *p, int lenght);
 void write_vsync_l(unsigned char *p, int lenght);

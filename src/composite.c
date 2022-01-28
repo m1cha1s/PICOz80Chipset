@@ -11,7 +11,7 @@
 
 #include "bitmap.h"
 
-void initComposite(void) {
+void init_composite(void) {
     PIO pio = pio0;
     uint offset = pio_add_program(pio, &composite_program);
 
@@ -19,7 +19,33 @@ void initComposite(void) {
     vline = 1;
     bline = 0;
 
-    write_vsync_l(&vsync_ll[0], HDOTS>>1);
+    // TODO finish the init process
+    write_vsync_l(&vsync_ll[0],        HDOTS>>1);			// Pre-build a long/long vscan line...
+    write_vsync_l(&vsync_ll[HDOTS>>1], HDOTS>>1);
+    write_vsync_l(&vsync_ls[0],        HDOTS>>1);			// A long/short vscan line...
+    write_vsync_s(&vsync_ls[HDOTS>>1], HDOTS>>1);
+    write_vsync_s(&vsync_ss[0],        HDOTS>>1);			// A short/short vscan line
+    write_vsync_s(&vsync_ss[HDOTS>>1], HDOTS>>1);
+
+    memset(&border[0], BORDER_COLOUR, HDOTS);				// Fill the border with the border colour
+    memset(&border[0], 1, HSYNC_BP1);				        // Add the hsync pulse
+    memset(&border[HSYNC_BP1], 9, HSYNC_BP2);
+
+    for(int i = 0; i < 2; i++) {
+        memset(&pixel_line_buffer[i][0], BORDER_COLOUR, HDOTS);
+        memset(&pixel_line_buffer[i][0], 1, HSYNC_BP1);
+        memset(&pixel_line_buffer[i][HSYNC_BP1], 9, HSYNC_BP2);
+        memset(&pixel_line_buffer[i][PIXEL_START], 31, WIDTH);
+    }
+
+    // PIO init
+    pio_sm_set_enabled(pio, STATE_MACHINE, false);
+    pio_sm_clear_fifos(pio, STATE_MACHINE);
+    composite_initialise_pio(pio, STATE_MACHINE, offset, 0, 5, PIOFREQ);
+    composite_configure_pio_dma(pio, STATE_MACHINE, dma_channel, HDOTS+1);
+    pio_sm_set_enabled(pio, STATE_MACHINE, true);
+
+    composite_dma_handler();
 }
 
 void write_vsync_s(unsigned char *p, int lenght) {
@@ -43,7 +69,7 @@ void composite_dma_handler(void) {
             break;
         case 3:
             dma_channel_set_read_addr(dma_channel, vsync_ls, true);
-            memcpy(&pixel_buffer[bline & 1][PIXEL_START], &bitmap[bline], WIDTH);
+            memcpy(&pixel_line_buffer[bline & 1][PIXEL_START], &bitmap[bline], WIDTH); // Copying data from bitmap to pixel_line_buffer
             break;
         case 4 ... 5:
         case 310 ... 312:
@@ -55,8 +81,8 @@ void composite_dma_handler(void) {
             dma_channel_set_read_addr(dma_channel, border, true);
 
         default:
-            dma_channel_set_read_addr(dma_channel, pixel_buffer[bline ++ & 1], true);
-            memcpy(&pixel_buffer[bline & 1][PIXEL_START], &bitmap[bline], WIDTH);
+            dma_channel_set_read_addr(dma_channel, pixel_line_buffer[bline ++ & 1], true); // Switch pixel buffer
+            memcpy(&pixel_line_buffer[bline & 1][PIXEL_START], &bitmap[bline], WIDTH); // Copying data from bitmap to pixel_line_buffer
             break;
     }
 
