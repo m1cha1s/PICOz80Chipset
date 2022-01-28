@@ -1,0 +1,36 @@
+.program composite
+
+.wrap_target
+    irq set 0
+loop:
+    out X, 8
+    mov pins, X
+    jmp X-- loop
+.wrap
+
+% c-sdk {
+//
+// Initialise the PIO
+// Parameters:
+// - pio: The PIO to attach this to
+// - sm: The state machine number
+// - offset: The instruction memory offset the program is loaded at
+// - pin_base: The number of the first GPIO pin to use in the PIO
+// - pin_count: The number of consecutive GPIO pins to write to
+// - freq: The frequency of the PIO state machine
+//
+// 
+void composite_initialise_pio(PIO pio, uint sm, uint offset, uint pin_base, uint pin_count, double freq) {
+    for(uint i=pin_base; i<pin_base+pin_count; i++) {
+        pio_gpio_init(pio, i);
+    }
+    pio_sm_set_consecutive_pindirs(pio, sm, pin_base, pin_count, true);
+    pio_sm_config c = composite_program_get_default_config(offset);
+    sm_config_set_set_pins(&c, pin_base, pin_count);
+    sm_config_set_out_pins(&c, pin_base, pin_count);
+    sm_config_set_out_shift(&c, false, true, 8);
+    sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_TX);
+    pio_sm_init(pio, sm, offset, &c);
+    pio->sm[sm].clkdiv = (uint32_t) (freq * (1 << 16));
+}
+%}
